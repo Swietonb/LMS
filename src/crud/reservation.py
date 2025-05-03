@@ -1,19 +1,22 @@
 from src.crud.base import CRUDBase
-from src.db.models import Reservation
+from src.db.models import Reservation, User
 from src.schemas.reservation import ReservationRequest, ReservationStatus
 from sqlalchemy.orm import Session
 from typing_extensions import override
 from typing import Type, Any
+from src.services.book import validate_book
+from src.services.user import validate_user
 
 
 class CRUDReservation(CRUDBase[Reservation, ReservationRequest, ReservationRequest]):
 
-    def get_by_user(self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100) -> list[Type[Reservation]]:
-        self.validate_user(user_id=user_id, db=db)
+    def get_by_user(self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100,
+                    current_user: User) -> list[Type[Reservation]]:
+        validate_user(user_id=user_id, db=db, current_user=current_user)
         return db.query(self.model).filter(self.model.user_id == user_id).offset(skip).limit(limit).all()
 
     def get_by_book(self, db: Session, *, book_id: int) -> list[Type[Reservation]]:
-        self.validate_book(book_id=book_id, db=db)
+        validate_book(book_id=book_id, db=db)
         return db.query(self.model).filter(self.model.book_id == book_id).all()
 
     def get_by_status(self, db: Session, *, status: ReservationStatus) -> list[Type[Reservation]]:
@@ -30,17 +33,24 @@ class CRUDReservation(CRUDBase[Reservation, ReservationRequest, ReservationReque
         ).all()
 
     @override
-    def create(self, db: Session, *, obj_request: ReservationRequest) -> Reservation:
-        self.validate_user(user_id=obj_request.user_id, db=db)
-        self.validate_book(book_id=obj_request.book_id, db=db)
+    def create(self, db: Session, *, obj_request: ReservationRequest, current_user: User = None) -> Reservation:
+        obj_request.user_id = current_user.id  # to check
+        validate_user(user_id=obj_request.user_id, db=db, current_user=current_user)
+        validate_book(book_id=obj_request.book_id, db=db)
         return super().create(db=db, obj_request=obj_request)
 
     @override
     def update(self, db: Session, *, obj_id: int,
-               obj_request: ReservationRequest | dict[str, Any]) -> Reservation | None:
-        self.validate_user(user_id=obj_request.user_id, db=db)
-        self.validate_book(book_id=obj_request.book_id, db=db)
+               obj_request: ReservationRequest | dict[str, Any], current_user: User = None) -> Reservation | None:
+        validate_user(user_id=obj_request.user_id, db=db, current_user=current_user)
+        validate_book(book_id=obj_request.book_id, db=db)
         return super().update(db=db, obj_id=obj_id, obj_request=obj_request)
+
+    @override
+    def remove(self, db: Session, *, obj_id: int, current_user: User = None) -> Reservation | None:
+        user_id = self.get(db, obj_id=obj_id).user_id
+        validate_user(user_id=user_id, db=db, current_user=current_user)
+        return super().remove(db=db, obj_id=obj_id)
 
 
 crud_reservation = CRUDReservation(Reservation)

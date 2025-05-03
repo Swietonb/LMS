@@ -3,7 +3,6 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from src.db.base import Base
-from src.db.models import User, Book
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -12,10 +11,30 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
-        self.model = model
+        self.model: Type[ModelType] = model
 
     def get(self, db: Session, obj_id: int) -> ModelType | None:
-        model = db.query(self.model).filter(self.model.id == obj_id).first()
+        """
+            Get an object from the database by ID.
+
+            Parameters
+            ----------
+            db : Session
+                SQLAlchemy database session.
+            obj_id : int
+                ID of the object to get. Must be a positive integer.
+
+            Returns
+            -------
+            ModelType
+                Retrieved database object of type ModelType or None if object does not exist.
+
+            Raises
+            ------
+            HTTPException
+                If object with given ID is not found (404 status code).
+        """
+        model: ModelType | None = db.query(self.model).filter(self.model.id == obj_id).first()
         if model is None:
             raise HTTPException(status_code=404, detail=f'Item with id {obj_id} not found.')
         return model
@@ -31,14 +50,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def update(self, db: Session, *, obj_id: int, obj_request: UpdateSchemaType | dict[str, Any]) -> ModelType | None:
-        db_obj = self.get(db, obj_id)
+        db_obj: ModelType | None = self.get(db, obj_id)
         if db_obj is None:
             raise HTTPException(status_code=404, detail='Not Found!')
 
         if isinstance(obj_request, dict):
-            update_data = obj_request
+            update_data: dict[str, Any] = obj_request
         else:
-            update_data = obj_request.model_dump(exclude_unset=True, exclude={'category_ids'})
+            update_data: dict[str, Any] = obj_request.model_dump(exclude_unset=True, exclude={'category_ids'})
 
         for field in update_data:
             if hasattr(db_obj, field):
@@ -50,22 +69,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def remove(self, db: Session, *, obj_id: int) -> ModelType | None:
-        obj = self.get(db, obj_id)
+        obj: ModelType | None = self.get(db, obj_id)
         if obj is None:
             raise HTTPException(status_code=404, detail='Not Found!')
 
         db.delete(obj)
         db.commit()
         return obj
-
-    @staticmethod
-    def validate_user(user_id: int, db: Session):
-        user_model = db.query(User).filter(User.id == user_id).first()
-        if user_model is None:
-            raise HTTPException(status_code=404, detail=f'User with id: {user_id} not found.')
-
-    @staticmethod
-    def validate_book(book_id: int, db: Session):
-        book_model = db.query(Book).filter(Book.id == book_id).first()
-        if book_model is None:
-            raise HTTPException(status_code=404, detail=f'Book with id: {book_id} not found.')

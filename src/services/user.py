@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.crud.user import crud_user
-from src.db.models.user import User
+from src.db.models.user import User, Role
 from fastapi import HTTPException
 from src.schemas.user import UserUpdate
 
@@ -47,3 +47,11 @@ def delete(*, db: Session, user_id: int) -> None:
         )
     crud_user.remove(db=db, obj_id=user_id)
     return None
+
+
+def validate_user(user_id: int, db: Session, current_user: User):
+    user_model = db.query(User).filter(User.id == user_id).first()
+    if user_model is None:
+        raise HTTPException(status_code=404, detail=f'User with id: {user_id} not found.')
+    if user_id != current_user.id and current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail='You can only access your own reservations')

@@ -22,4 +22,3 @@ class ReservationRequest(BaseModel):
 class ReservationResponse(ReservationRequest):
     id: int
     model_config = {'from_attributes': True}
-

@@ -19,7 +19,7 @@ async def get_multi(skip: int = 0, limit: int = 5000, db: Session = Depends(get_
 @router.get('/user/{user_id}', response_model=list[ReservationResponse], status_code=status.HTTP_200_OK)
 async def get_by_user(user_id: int = Path(gt=0), db: Session = Depends(get_db),
                       current_user=Depends(get_current_user)):
-    return crud_reservation.get_by_user(db=db, user_id=user_id)
+    return crud_reservation.get_by_user(db=db, user_id=user_id, current_user=current_user)
 
 
 @router.get('/book/{book_id}', response_model=list[ReservationResponse], status_code=status.HTTP_200_OK)
@@ -49,19 +49,19 @@ async def get_by_user_and_status(res_status: ReservationStatus, user_id: int = P
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_reservation(reservation_request: ReservationRequest, db: Session = Depends(get_db),
                              current_user=Depends(get_current_user)):
-    return crud_reservation.create(db=db, obj_request=reservation_request)
+    return crud_reservation.create(db=db, obj_request=reservation_request, current_user=current_user)
 
 
 @router.put('/update/{reservation_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def update_reservation(reservation_request: ReservationRequest, reservation_id: int = Path(gt=0),
                              db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    crud_reservation.update(db=db, obj_id=reservation_id, obj_request=reservation_request)
+    crud_reservation.update(db=db, obj_id=reservation_id, obj_request=reservation_request, current_user=current_user)
 
 
 @router.delete('/delete/{reservation_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_reservation(reservation_id: int = Path(gt=0), db: Session = Depends(get_db),
                              current_user=Depends(get_current_user)):
-    crud_reservation.remove(db=db, obj_id=reservation_id)
+    crud_reservation.remove(db=db, obj_id=reservation_id, current_user=current_user)
 
 
 @router.get('/{reservation_id}', response_model=ReservationResponse, status_code=status.HTTP_200_OK)

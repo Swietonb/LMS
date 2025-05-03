@@ -12,8 +12,7 @@ from src.crud.user import crud_user
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"/auth/login")
 
 
-def get_current_user(
-        db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
 
     try:
         payload = decode_token(token)
